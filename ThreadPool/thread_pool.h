@@ -2,7 +2,10 @@
 //ThreadPool thread_pool;
 //thread_pool.Start();
 //thread_pool.AddTask(your function());
+//if(thread_pool.IsTaskEnd())
+//{
 //thread_pool.Stop();
+//}
 
 #ifndef THREAD_POOL_H
 #define THREAD_POOL_H
@@ -34,6 +37,10 @@ public:
 	/// <returns> void type </returns>
 	void AddTask(const std::function<void()>& task);
 
+	/// <summary> Return task status</summary>
+	/// <returns> bool type, return task status </returns>
+	bool IsTaskEnd();
+
 private:
 	void ThreadLoop();
 	std::function<void()> Take();
@@ -41,7 +48,8 @@ private:
 	std::queue<std::function<void()>> task_queue_;
 	std::mutex mutex_;
 	std::condition_variable condition_variable_;
-	bool flag_start_;
+	bool start_flag_;
+	bool task_end_flag_;
 	int thread_number_;
 };
 #endif

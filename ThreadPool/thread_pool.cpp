@@ -1,14 +1,22 @@
 #include "thread_pool.h"
 
 ThreadPool::ThreadPool()
-	: flag_start_(false),
-	thread_number_(std::thread::hardware_concurrency() - 2)
+	: start_flag_(false),
+	task_end_flag_(false)
 {
+	if (std::thread::hardware_concurrency() > 3)
+	{
+		thread_number_ = std::thread::hardware_concurrency() - 2;
+	}
+	else
+	{
+		thread_number_ = 1;
+	}
 }
 
 ThreadPool::~ThreadPool()
 {
-	if (flag_start_)
+	if (start_flag_)
 	{
 		Stop();
 	}
@@ -16,7 +24,7 @@ ThreadPool::~ThreadPool()
 
 void ThreadPool::Start()
 {
-	flag_start_ = true;
+	start_flag_ = true;
 
 	thread_vector_.reserve(thread_number_);
 	for (int i = 0; i < thread_number_; ++i)
@@ -27,7 +35,7 @@ void ThreadPool::Start()
 
 void ThreadPool::Stop()
 {
-	flag_start_ = false;
+	start_flag_ = false;
 	condition_variable_.notify_all();
 
 	for (auto it = thread_vector_.begin(); it != thread_vector_.end(); ++it)
@@ -39,11 +47,12 @@ void ThreadPool::Stop()
 
 void ThreadPool::ThreadLoop()
 {
-	while (flag_start_)
+	while (start_flag_)
 	{
 		std::function<void()> task = Take();
 		if (task)
 		{
+			task_end_flag_ = false;
 			task();
 		}
 	}
@@ -57,18 +66,29 @@ void ThreadPool::AddTask(const std::function<void()>& task)
 	condition_variable_.notify_one();
 }
 
+bool ThreadPool::IsTaskEnd()
+{
+	if (task_queue_.empty())
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
 std::function<void()> ThreadPool::Take()
 {
 	std::unique_lock<std::mutex> lock(mutex_);
 
-	while (task_queue_.empty() && flag_start_)
+	while (task_queue_.empty() && start_flag_)
 	{
 		condition_variable_.wait(lock);
 	}
 
 	std::function<void()> task;
-	auto size = task_queue_.size();
-	if (!task_queue_.empty() && flag_start_)
+	if (!task_queue_.empty() && start_flag_)
 	{
 		task = task_queue_.front();
 		task_queue_.pop();

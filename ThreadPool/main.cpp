@@ -48,7 +48,10 @@ void ThreadPoolSleepTime(int n)
 	{
 		thread_pool.AddTask(SleepTask);
 	}
-	thread_pool.Stop();
+	if (thread_pool.IsTaskEnd())
+	{
+		thread_pool.Stop();
+	}
 
 	stop_thread_pool = clock();
 	std::cout << "Thread pool time = " << double(stop_thread_pool - start_thread_pool) / CLOCKS_PER_SEC << std::endl;
